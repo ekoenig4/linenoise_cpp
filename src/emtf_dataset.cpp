@@ -1,8 +1,10 @@
 #include "emtf_dataset.h"
 
 #include <fstream>
+#include <boost/regex.hpp>
 
 using namespace std;
+using namespace boost;
 
 template <typename T>
 void print_vector(const vector<T> vec, string name = "array")
@@ -45,35 +47,115 @@ void loadtxt(string fname, vector<Address> &out)
 
 Address::Address(vector<string> input)
 {
-    // if (input.size() != 16)
-    //     cout << "Expected 16 values but got " << input.size() << endl;
+    for ( unsigned int i = 0 ; i < HEADER.size(); i++)
+    {
+        if (input.size() < i)
+            data[HEADER[i]] = input[i];
+        else
+            data[HEADER[i]] = "";
+    }
+}
 
-    base = input[0];
-    ch = input[1];
-    sel = input[2];
-    offset = input[3];
-    address = input[4];
-    hex = input[5];
-    length = input[6];
-    mask = input[7];
-    read = input[8];
-    write = input[9];
-    description = input[10];
-    station = input[11];
-    chid = input[12];
-    chamber = input[13];
-    suggested_parameter_name = input[14];
+void Address::print(vector<int> spacers)
+{
+    for (unsigned int i = 0; i < HEADER.size(); i++)
+    {
+        string value = get(HEADER[i]);
+        int n_spaces = value.size() + 1;
 
-    if (input.size() == 16)
-        root_name = input[15];
+        if (spacers.size() > i)
+        {
+            if (spacers[i] > n_spaces)
+            {
+                n_spaces = spacers[i];
+            }
+        }
 
-    this->input = input;
+        string spaces(n_spaces - value.size(), ' ');
+        cout << value << spaces << " | ";
+    }
+    cout << endl;
 }
 
 Dataset::Dataset(string fname)
 {
     this->fname = fname;
 
-    vector<Address> out;
-    loadtxt(fname, out);
+    addresses.clear();
+    loadtxt(fname, addresses);
+
+}
+
+void Dataset::print(int n_adrs)
+{
+    cout << "Size: " << size() << endl;
+    vector<int> spacers;
+    if ( n_adrs > size())
+        n_adrs = size();
+
+    int n_char = 0;
+    for (string param : HEADER)
+    {
+        int space = param.size();
+        for (unsigned int i = 0; i < n_adrs; i++)
+        {
+            string value = addresses[i].get(param);
+            int size = value.size();
+            if (size > space)
+            {
+                space = size;
+            }
+        }
+        n_char += space + 1 + 3;
+        spacers.push_back(space+1);
+    }
+
+    for (unsigned int i = 0; i < HEADER.size(); i++)
+    {
+        string spaces(spacers[i] - HEADER[i].size(), ' ');
+        cout  << HEADER[i] << spaces << " | ";
+    }
+    cout << endl;
+
+    string line(n_char, '-');
+    cout << line << endl;
+
+    for (unsigned int i = 0; i < n_adrs; i++)
+    {
+        addresses[i].print(spacers);
+    }
+
+}
+
+string matching_param(string param)
+{
+    regex param_regex(param);
+    cmatch what;
+    for (string param : HEADER)
+    {
+        if (regex_match(param.c_str(), what, param_regex))
+            return param;
+    }
+    return "null";
+}
+
+Dataset Dataset::subset(string param, string pattern)
+{
+    Dataset _subset;
+
+    param = matching_param(".*"+param+".*");
+    regex expression(pattern);
+    cmatch what;
+
+    for (Address adr : addresses)
+    {
+        string value = adr.get(param);
+        
+        if (regex_match(value.c_str(), what, expression))
+        {
+            _subset.addresses.push_back(adr);
+        }
+    }
+
+    return _subset;
 }

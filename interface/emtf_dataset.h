@@ -4,30 +4,23 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
+
+const std::vector<std::string> HEADER = {"base", "ch", "sel", "offset", "address hex",
+                                         "length", "mask", "read", "write",
+                                         "description", "station", "chid", "chamber",
+                                         "suggested parameter name", "root name"};
 
 class Address
 {
 public:
-    std::string base;
-    std::string ch;
-    std::string sel;
-    std::string offset;
-    std::string address;
-    std::string hex;
-    std::string length;
-    std::string mask;
-    std::string read;
-    std::string write;
-    std::string description;
-    std::string station;
-    std::string chid;
-    std::string chamber;
-    std::string suggested_parameter_name;
-    std::string root_name;
 
     Address(std::vector<std::string> input);
+    std::string get(std::string param) { return data[param];  }
+    void print(std::vector<int> spacers={});
+
 private:
-    std::vector<std::string> input;
+    std::map<std::string, std::string> data;
 };
 
 class Dataset
@@ -35,10 +28,15 @@ class Dataset
 public:
     std::string fname;
 
-    Dataset() : Dataset("emtf_pcie_address_table.csv") {};
+    Dataset() {};
     Dataset(std::string fname);
+    Dataset subset(std::string param, std::string pattern);
+
+    unsigned int size() { return addresses.size(); }
+    void print(int n_adrs=5);
 
 private:
+    std::vector<Address> addresses;
 };
 
 #endif // EMTF_DATASET_H
