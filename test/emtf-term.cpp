@@ -49,6 +49,18 @@ string prbs_read_help = "Reads and displays PRBS counters from all RX units";
 // field 5: pointer to string containing help message for this command. Last record contains pointer to top-level help
 node_record nr[] = 
 {
+	/*
+	device command (open/etc.) (device name/regex)
+	device list - list all open devices
+
+	register write register (name/regex) value (decimal/hex) (str_to_ll)
+	register read register (name/regex) (print as 0X-hex)
+
+	verylog format 16'habc5 (number of bits)'(hex)(value)
+
+
+	read entire 64 bit register, edit masked part of register and write entire register back
+	*/
 // lvl  command_text                hint for next cmd      callback	ptr to help string
 	{0, "settings",                 "operation",           NULL,    &settings_help},
 	{1, 	"write",                "address (dec or 0x)", NULL,    &missing_args},
