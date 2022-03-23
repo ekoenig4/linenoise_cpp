@@ -1,4 +1,4 @@
-CC=g++
+CC=g++ -std=c++11
 
 HDR=interface/
 SRC=src/
@@ -13,7 +13,7 @@ PRGS=$(wildcard $(PRG)*.cpp)
 EXES=$(patsubst $(PRG)%, $(EXE)%, $(PRGS:.cpp=))
 PATS=$(patsubst $(EXE)%, %, $(EXES))
 
-CFLAGS=-Wall -W -ggdb -std=c++11
+CFLAGS=-Wall -W -ggdb
 INCLUDE=-l boost_regex -I $(HDR)
 
 .PHONY: all test clean
