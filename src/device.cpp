@@ -16,7 +16,7 @@ Device::Device(string path)
 {
     this->path = path;
     id = ::open(path.c_str(), O_RDWR);
-    name = path + ":" + to_string(id);
+    name = path;
 
     if (id == -1)
     {
@@ -121,9 +121,16 @@ ssize_t Device::write(const void *buf, Address adr)
     // Write word into block
     block = block | data;
     write(&block, 8, offset);
+
+    if (debug)
+    {
+        block = 0x0;
+        read(&block, 8, offset);
+        cout << "[DEBUG] - block" << bitset<64>(data) << endl;
+    }
 }
 
 void Device::print()
 {
-    cout << "Device: " << name << endl;
+    cout << "device: " << name << endl;
 }
