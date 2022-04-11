@@ -9,7 +9,7 @@ using namespace boost;
 template <typename T>
 void print_vector(const vector<T> vec, string name = "array")
 {
-    int m = vec.size();
+int m = vec.size();
     cout << name << "(" << m << "): {" << endl;
     for (int j = 0; j < m; j++)
     {
@@ -26,18 +26,26 @@ void loadtxt(string fname, vector<Address> &out)
             throw runtime_error("Could not open file: " + fname);
 
         string line, word;
-        string delim = ",";
+        string comma_delim = ",";
+        string quote_delim = "\"";
         getline(file, line);
         while (getline(file, line))
         {
             size_t pos = 0;
             string token;
             vector<string> vec;
-            while ((pos = line.find(delim)) != string::npos)
+            while ((pos = line.find(comma_delim)) != string::npos)
             {
                 token = line.substr(0, pos);
+
+                if ( token.find(quote_delim) == 0 )
+                { // Handle entries that have " " 
+                    pos = line.find(quote_delim, 1)+1;
+                    token = line.substr(0, pos);
+                }
+
                 vec.push_back(token);
-                line.erase(0, pos + delim.length());
+                line.erase(0, pos + comma_delim.length());
             }
             vec.push_back(line);
             Address adrs(vec);
@@ -49,10 +57,10 @@ Address::Address(vector<string> input)
 {
     for ( unsigned int i = 0 ; i < HEADER.size(); i++)
     {
-        if (input.size() < i)
+        if (input.size() > i)
             data[HEADER[i]] = input[i];
         else
-            data[HEADER[i]] = "";
+            data[HEADER[i]] = "null";
     }
 }
 
@@ -73,6 +81,7 @@ void Address::print(vector<int> spacers)
 
         string spaces(n_spaces - value.size(), ' ');
         cout << value << spaces << " | ";
+        // cout << (string)value << endl;
     }
     cout << endl;
 }
@@ -150,7 +159,7 @@ Dataset Dataset::subset(string param, string pattern)
     for (Address adr : addresses)
     {
         string value = adr.get(param);
-        
+
         if (regex_match(value.c_str(), what, expression))
         {
             _subset.addresses.push_back(adr);
