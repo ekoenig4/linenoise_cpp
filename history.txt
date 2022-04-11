@@ -1,4 +1,0 @@
-exit
-help
-exit
-exit 
