@@ -9,24 +9,18 @@
 #include <bitset>
 
 
+#include "config.h"
 #include "emtf_dataset.h"
 #include "device.h"
+#include "data.h"
 
 using namespace boost;
 
-Dataset* dataset;
+string dataset_path = "/home/koenig/Documents/linenoise_cpp/emtf_pcie_address_table.csv";
+Dataset *dataset;
 vector<Device> devices;
 
-bool DEBUG = false;
-
-enum PRINT_VALUE
-{
-	DEC,
-	HEX,
-	BIN
-};
-
-PRINT_VALUE PRINT_TYPE = DEC;
+// PRINT_VALUE Data::format = DEC;
 
 //FILE* log_file;
 // help strings
@@ -43,7 +37,7 @@ string instructions_help = "Start typing a command.\n"
 "Press Enter to execute the command";
 
 string missing_args = "Command is missing agruments. Syntax:\n settings write [addr] [data]";
-string missing_adr_name = "Command is missing an address name.";
+string missing_adr_name = "Command is missing an address name/regex.";
 string missing_value = "Command is missing a value.";
 
 string device_list_help = "Lists all opened devices";
@@ -54,13 +48,15 @@ string device_open_help = "Opens all devices that match regex pattern.\n"
 						  "Device regex does not need to include /dev/ path.";
 void open_devices(string cmd);
 
-string device_read_help = "Reads value of given address name for all openned devices.";
+string device_read_help = "Reads value of given address name/regex for all openned devices.";
 void read_name(string cmd);
 
-string device_write_help = "Writes value to given address name for all openned devices.";
+string device_write_help = "Writes value to given address name/regex for all openned devices.";
 void write_name(string cmd);
 
-string info_help = "Print information about given address name.";
+string info_help = "Print information about given address name/regex.\n"
+				   "Optionally an address parameter can be given followed by a regex pattern to match."
+				   "By default this address parameter is name and does not need to be given.";
 void address_info(string cmd);
 
 string print_help = "Set the format for values to printed as. Either decimal (dec, default), hex (hex), or 64bit binary (bin).";
@@ -97,15 +93,16 @@ node_record nr[] =
 		{0, "open", "path/regex", NULL, &device_open_help},
 			{1, "(.*)", "<Enter>", open_devices, &missing_adr_name},
 
-		{0, "read", "address name", NULL, &device_read_help},
+		{0, "read", "address name/regex", NULL, &device_read_help},
 			{1, "(.*)", "<Enter>", read_name, &missing_adr_name},
 		
-		{0, "write", "data (dec or 0x)", NULL, &device_write_help},
-			{1, "([0-9a-fx]+)", "to address name", NULL, &missing_value},
-				{2, "(.*)", "<Enter>", write_name, &missing_adr_name},
+		{0, "write", "address name/regex", NULL, &device_write_help},
+			{1, "(.*)", "data (dec or 0x)", NULL, &missing_adr_name},
+				{2, "([0-9a-fx]+)", "<Enter>", write_name, &missing_value},
 
-		{0, "info", "address name", NULL, &info_help},
+		{0, "info", "address name/regex", NULL, &info_help},
 			{1, "(.*)", "<Enter>", address_info, &missing_adr_name},
+				{2, "(.*)", "<Enter>", address_info, &missing_adr_name},
 
 		{0, "debug", "0/1", NULL, &debug_help},
 			{1, "([0-1])", "<Enter>", toggle_debug, &debug_help},
@@ -115,27 +112,6 @@ node_record nr[] =
 		{0, "exit", "<Enter>", terminate, NULL},
 		{-1, "help", "command", NULL, &top_help} // help command = end marker
 };
-
-
-
-string print_value(uint64_t value)
-{
-	stringstream ss;
-	switch (PRINT_TYPE)
-	{
-	case DEC:
-		ss << value;
-		break;
-	case HEX:
-		ss << "0x" << std::hex << value;
-		break;
-	case BIN:
-		ss << "0b" << std::bitset<64>(value);
-		break;
-	// default:
-	}
-	return ss.str();
-}
 
 vector<string> split(string s, string delimiter=" ")
 {
@@ -218,34 +194,29 @@ void read_name(string cmd)
 
 	for (Address &adr : addresses.data())
 	{
-		if (DEBUG)
+		if (config::debug)
 		{
 			cout << "[DEBUG] | ";
 			adr.print();
 		}
 		for (Device &dev : devices)
 		{
-			uint64_t buff = 0x0;
+			Data buff(0x0);
 			dev.read(&buff, adr);
-			cout << dev << ": " << print_value(buff) << endl;
+			cout << dev << ": " << buff << endl;
 		}
 	}
-}
-
-uint64_t convert_to_data(string cmd)
-{
-	if (cmd.find("0x") == 0)
-		return stoll(cmd, 0, 16);
-	return stoll(cmd);
 }
 
 void write_name(string cmd)
 {
 	vector<string> cmds = split(cmd);
-	uint64_t data = convert_to_data(cmds[cmds.size() - 2]);
-	string address_regex = cmds[cmds.size() - 1];
-	cout << "writing data: " << data << endl;
-	cout << "to address:   " << address_regex << endl;
+	string address_regex = cmds[cmds.size() - 2];
+	Data data(cmds[cmds.size() - 1]);
+
+	cout << "writing data:       " << data << endl;
+	cout << "to address pattern: " << address_regex << endl;
+
 	Dataset addresses = dataset->subset("name", address_regex);
 
 	if (addresses.size() == 0)
@@ -253,9 +224,10 @@ void write_name(string cmd)
 		cout << "[WARNING] - Unable to find any addresses that match \"" << address_regex << "\"" << endl;
 	}
 
+	// cout << "[Device] -> [Address]: [Value] " << adr.get("name") << endl;
 	for (Address adr : addresses.data())
 	{
-		if (DEBUG)
+		if (config::debug)
 		{
 			cout << "[DEBUG] | ";
 			adr.print();
@@ -270,26 +242,36 @@ void write_name(string cmd)
 void address_info(string cmd)
 {
 	vector<string> cmds = split(cmd);
-	string address_regex = cmds[cmds.size() - 1];
-	cout << "reading address info for " << address_regex << endl;
-	Dataset addresses = dataset->subset("name", address_regex);
+
+	string param, regex;
+	if (cmds.size() == 2)
+	{
+		param = "name";
+		regex = cmds[cmds.size() - 1];
+	}
+
+	if (cmds.size() == 3)
+	{
+		param = cmds[cmds.size() - 2];
+		regex = cmds[cmds.size() - 1];
+	}
+
+	cout << "reading address " << param << " info for " << regex << endl;
+	Dataset addresses = dataset->subset(param, regex);
 
 	if (addresses.size() == 0)
 	{
-		cout << "[WARNING] - Unable to find any addresses that match \"" << address_regex << "\"" << endl;
+		cout << "[WARNING] - Unable to find any addresses that match \"" << regex << "\"" << endl;
 	}
 
-	addresses.print();
+	addresses.print(-1);
 }
 
 void toggle_debug(string cmd)
 {
 	vector<string> cmds = split(cmd);
-	DEBUG = stoi(cmds[cmds.size() - 1]);
-	for (Device &d : devices)
-		d.debug = DEBUG;
-
-	cout << "Debug set: " << (DEBUG ? "TRUE" : "FALSE") << endl;
+	config::debug = stoi(cmds[cmds.size() - 1]);
+ 	cout << "Debug set: " << (config::debug ? "TRUE" : "FALSE") << endl;
 }
 
 void set_print(string cmd)
@@ -298,17 +280,17 @@ void set_print(string cmd)
 	string print = cmds[cmds.size() - 1];
 	if (print == "dec")
 	{
-		PRINT_TYPE = DEC;
+		Data::format = F_DEC;
 		cout << "printing values in decimal" << endl;
 	}
 	else if (print == "hex")
 	{
-		PRINT_TYPE = HEX;
+		Data::format = F_HEX;
 		cout << "printing values in hex." << endl;
 	}
 	else if (print == "bin")
 	{
-		PRINT_TYPE = BIN;
+		Data::format = F_BIN;
 		cout << "printing values in 64bit binary." << endl;
 	}
 }
@@ -322,7 +304,7 @@ void terminate(string cmd)
 
 int main(int argc, char **argv) 
 {
-	dataset = new Dataset("emtf_pcie_address_table.csv");
+	dataset = new Dataset(dataset_path);
 
 	char* buf;
 	string line;

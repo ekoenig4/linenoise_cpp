@@ -4,6 +4,8 @@
 #include <string>
 #include <bitset>
 #include <cstring>
+
+#include "config.h"
 using namespace std;
 
 std::ostream &operator<<(std::ostream &os, const Device &d)
@@ -26,7 +28,7 @@ Device::Device(string path)
 
 ssize_t Device::read(void *buf, size_t count, off_t offset)
 {
-    if (debug)
+    if (config::debug)
     {
         cout << "[DEBUG] - reading " << count << " bytes from " << hex << offset << endl;
     }
@@ -43,24 +45,35 @@ ssize_t Device::read(void *buf, size_t count, off_t offset)
 
 ssize_t Device::read(void *buf, Address adr)
 {
+    bool readable = stoi(adr.get("read"));
+    if (!readable)
+    {
+        cout << "[ERROR] - Address " << adr.get("name") << " is not readable" << endl;
+        return 0;
+    }
+
     // Get address, word and position of least significant bit
     off_t offset = adr.get_as_hex("hex");
     uint64_t mask = adr.get_as_hex("mask");
     uint64_t pos = ffs(mask) - 1;
 
-    if (debug)
+    // Get entire 64bit block and mask the word out 
+    int ret = read(buf, 8, offset);
+    uint64_t block = *static_cast<uint64_t *>(buf);
+    uint64_t data = (block & mask) >> pos;
+
+    if (config::debug)
     {
         cout << "[DEBUG] - reading" << endl;
         cout << "          "
              << "address: " << hex << offset << endl;
         cout << "          "
              << "mask:    " << bitset<64>(mask) << endl;
+        cout << "          "
+             << "block:   " << bitset<64>(block) << endl;
+        cout << "          "
+             << "data:    " << bitset<64>(data) << endl;
     }
-
-    // Get entire 64bit block and mask the word out 
-    int ret = read(buf, 8, offset);
-    uint64_t block = *static_cast<uint64_t *>(buf);
-    uint64_t data = (block & mask) >> pos;
 
     // Write offset word back to buffer
     memcpy(buf, &data, sizeof(data));
@@ -70,9 +83,9 @@ ssize_t Device::read(void *buf, Address adr)
 
 ssize_t Device::write(const void *buf, size_t count, off_t offset)
 {
-    if (debug)
+    if (config::debug)
     {
-        cout << "[DEBUG] - writing " << count << " bytes to " << hex << offset << endl;
+        cout << "[DEBUG] - writing " << count << " bytes to   " << hex << offset << endl;
     }
 
     int ret = pwrite(id, buf, count, offset);
@@ -87,6 +100,13 @@ ssize_t Device::write(const void *buf, size_t count, off_t offset)
 
 ssize_t Device::write(const void *buf, Address adr)
 {
+    bool writeable = stoi(adr.get("write"));
+    if (!writeable)
+    {
+        cout << "[ERROR] - Address " << adr.get("name") << " is not writeable" << endl;
+        return 0;
+    }
+
     // Get address, word and position of least significant bit
     off_t offset = adr.get_as_hex("hex");
     uint64_t mask = adr.get_as_hex("mask");
@@ -102,7 +122,7 @@ ssize_t Device::write(const void *buf, Address adr)
     data = data << pos;
 
 
-    if (debug)
+    if (config::debug)
     {
         cout << "[DEBUG] - writing" << endl;
         cout << "          "
@@ -122,11 +142,11 @@ ssize_t Device::write(const void *buf, Address adr)
     block = block | data;
     write(&block, 8, offset);
 
-    if (debug)
+    if (config::debug)
     {
         block = 0x0;
         read(&block, 8, offset);
-        cout << "[DEBUG] - block" << bitset<64>(data) << endl;
+        cout << "[DEBUG] - block:   " << bitset<64>(block) << endl;
     }
 }
 

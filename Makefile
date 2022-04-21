@@ -7,8 +7,8 @@ PRG=test/
 EXE=bin/
 
 HDRS=$(wildcard $(HDR)*.h)
-SRCS=$(patsubst $(HDR)%, $(SRC)%, $(HDRS:.h=.cpp))
-OBJS=$(patsubst $(HDR)%, $(OBJ)%, $(HDRS:.h=.obj))
+SRCS=$(wildcard $(SRC)*.cpp)
+OBJS=$(patsubst $(SRC)%, $(OBJ)%, $(SRCS:.cpp=.obj))
 PRGS=$(wildcard $(PRG)*.cpp)
 EXES=$(patsubst $(PRG)%, $(EXE)%, $(PRGS:.cpp=))
 PATS=$(patsubst $(EXE)%, %, $(EXES))

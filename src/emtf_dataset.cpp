@@ -99,7 +99,7 @@ void Dataset::print(int n_adrs)
 {
     cout << "Size: " << size() << endl;
     vector<int> spacers;
-    if ( n_adrs > size())
+    if ( n_adrs > size() || n_adrs == -1)
         n_adrs = size();
 
     int n_char = 0;
