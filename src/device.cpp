@@ -48,7 +48,7 @@ ssize_t Device::read(void *buf, Address adr)
     bool readable = stoi(adr.get("read"));
     if (!readable)
     {
-        cout << "[ERROR] - Address " << adr.get("name") << " is not readable" << endl;
+        cerr << "[ERROR] - Address " << adr.get("name") << " is not readable" << endl;
         return 0;
     }
 
@@ -103,7 +103,7 @@ ssize_t Device::write(const void *buf, Address adr)
     bool writeable = stoi(adr.get("write"));
     if (!writeable)
     {
-        cout << "[ERROR] - Address " << adr.get("name") << " is not writeable" << endl;
+        cerr << "[ERROR] - Address " << adr.get("name") << " is not writeable" << endl;
         return 0;
     }
 

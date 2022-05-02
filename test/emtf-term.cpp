@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
+#include <fstream>
 #include <sys/types.h>
 #include <dirent.h>
 #include "linenoise.h"
@@ -301,6 +302,26 @@ void terminate(string cmd)
 	exit(0);
 }
 
+void loadcmds(std::string fname, linenoise& ln)
+{
+	std::ifstream file(fname);
+	if (!file.is_open())
+		throw std::runtime_error("Could not open file: " + fname);
+
+	std::string line;
+	while (std::getline(file, line))
+	{
+		string hint = ln.menu_tree.find_hints(line);
+		int ei = ln.get_enter_index();
+		
+		// call callback for this command if available
+		if (ei >= 0 && nr[ei].cb != NULL) nr[ei].cb(line);
+
+		// display help message if requested
+		if (ei < 0)	printf("%s", ln.get_help_message().c_str());
+	}
+}	
+
 
 int main(int argc, char **argv) 
 {
@@ -314,7 +335,12 @@ int main(int argc, char **argv)
 	// construct linenoise
 	linenoise ln(nr, "history.txt");
 
-    /* Now this is the main loop of the typical linenoise-based application.
+	if (argc > 1) 
+	{
+		loadcmds(argv[1], ln);
+	}
+
+	/* Now this is the main loop of the typical linenoise-based application.
      * The call to ln.prompt() will block as long as the user types something
      * and presses enter. */
     

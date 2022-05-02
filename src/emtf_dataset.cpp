@@ -20,38 +20,38 @@ int m = vec.size();
 }
 
 void loadtxt(string fname, vector<Address> &out)
+{
+    ifstream file(fname);
+    if (!file.is_open())
+        throw runtime_error("Could not open file: " + fname);
+
+    string line, word;
+    string comma_delim = ",";
+    string quote_delim = "\"";
+    getline(file, line);
+    while (getline(file, line))
     {
-        ifstream file(fname);
-        if (!file.is_open())
-            throw runtime_error("Could not open file: " + fname);
-
-        string line, word;
-        string comma_delim = ",";
-        string quote_delim = "\"";
-        getline(file, line);
-        while (getline(file, line))
+        size_t pos = 0;
+        string token;
+        vector<string> vec;
+        while ((pos = line.find(comma_delim)) != string::npos)
         {
-            size_t pos = 0;
-            string token;
-            vector<string> vec;
-            while ((pos = line.find(comma_delim)) != string::npos)
-            {
+            token = line.substr(0, pos);
+
+            if ( token.find(quote_delim) == 0 )
+            { // Handle entries that have " " 
+                pos = line.find(quote_delim, 1)+1;
                 token = line.substr(0, pos);
-
-                if ( token.find(quote_delim) == 0 )
-                { // Handle entries that have " " 
-                    pos = line.find(quote_delim, 1)+1;
-                    token = line.substr(0, pos);
-                }
-
-                vec.push_back(token);
-                line.erase(0, pos + comma_delim.length());
             }
-            vec.push_back(line);
-            Address adrs(vec);
-            out.push_back(adrs);
+
+            vec.push_back(token);
+            line.erase(0, pos + comma_delim.length());
         }
+        vec.push_back(line);
+        Address adrs(vec);
+        out.push_back(adrs);
     }
+}
 
 Address::Address(vector<string> input)
 {
