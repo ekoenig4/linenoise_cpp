@@ -14,7 +14,7 @@ public:
 
     Device(std::string path);
 
-    void print();
+    std::string print();
     ssize_t read(void *buf, size_t count, off_t offset);
     ssize_t write(const void *buf, size_t count, off_t offset);
 

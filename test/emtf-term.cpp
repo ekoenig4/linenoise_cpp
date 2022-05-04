@@ -14,21 +14,22 @@
 #include "emtf_dataset.h"
 #include "device.h"
 #include "data.h"
+#include "terminal_output.h"
 
 using namespace boost;
 
-string dataset_path = "/home/koenig/Documents/linenoise_cpp/emtf_pcie_address_table.csv";
+string dataset_path = "/home/koenig/Documents/linenoise_cpp/data/emtf_pcie_address_table.csv";
 Dataset *dataset;
 vector<Device> devices;
-
-// PRINT_VALUE Data::format = DEC;
 
 //FILE* log_file;
 // help strings
 string top_help = 
-"Available commands:\n open\n read\n write\n list\n info\n print\n debug\n exit\n"
+"Available commands:\n open\n read\n write\n list\n dataset\n info\n print\n verbose\n debug\n exit\n"
 "Type help [command] to see more infomation about a command\n"
-"Type help instructions to learn how to use command line";
+"Type help instructions to learn how to use command line\n"
+"A file of commands can be passed to the terminal on startup: ./emtf-term /path/to/cmds.txt\n"
+"If a command file is passed, specify the dataset path with the dataset command first";
 
 string help_todo = "[TODO] Write help message";
 string no_help = "Help is not available for this item";
@@ -60,11 +61,20 @@ string info_help = "Print information about given address name/regex.\n"
 				   "By default this address parameter is name and does not need to be given.";
 void address_info(string cmd);
 
+string dataset_help = "Specify path to dataset csv.\n"
+					  "If a dataset is not passed in a command file, the default is used.\n"
+					  "Default is set in source code as: " +
+					  dataset_path;
+void set_dataset(string cmd);
+
 string print_help = "Set the format for values to printed as. Either decimal (dec, default), hex (hex), or 64bit binary (bin).";
 void set_print(string cmd);
 
 string debug_help = "Set debug options";
 void toggle_debug(string cmd);
+
+string verbose_help = "Set verbose level. 0 - no output, 1 - standard output";
+void set_verbose(string cmd);
 
 void terminate(string cmd);
 
@@ -101,12 +111,18 @@ node_record nr[] =
 			{1, "(.*)", "data (dec or 0x)", NULL, &missing_adr_name},
 				{2, "([0-9a-fx]+)", "<Enter>", write_name, &missing_value},
 
+		{0, "dataset", "/path/to/dataset.csv", NULL, &dataset_help},
+			{1, "(.*)", "<Enter>", set_dataset, &dataset_help},
+
 		{0, "info", "address name/regex", NULL, &info_help},
 			{1, "(.*)", "<Enter>", address_info, &missing_adr_name},
 				{2, "(.*)", "<Enter>", address_info, &missing_adr_name},
 
 		{0, "debug", "0/1", NULL, &debug_help},
 			{1, "([0-1])", "<Enter>", toggle_debug, &debug_help},
+
+		{0, "verbose", "level (0,1)", NULL, &verbose_help},
+			{1, "([0-1])", "<Enter>", set_verbose, &verbose_help},
 
 		{0, "print", "(dec|hex|bin)", set_print, &print_help},
 
@@ -165,19 +181,20 @@ void open_devices(string cmd)
 	vector<string> paths = split(path_regex, "/");
 	string device_regex = paths[paths.size() - 1];
 
-	cout << "openning devices: " << device_regex << endl;
+	print::output.verbose(1) << "openning devices: " << device_regex << endl;
 
 	devices = get_valid_devices(device_regex);
 
-	cout << "openned " << devices.size() << " devices" << endl;
+	print::output.verbose(0) << "openned " << devices.size() << " devices" << endl;
 }
 
 void list_devices(string cmd)
 {
-	cout << "listing devices" << endl;
+	print::output.verbose(1) << "listing devices" << endl;
+
 	for (Device &d : devices)
 	{
-		d.print();
+		print::output.verbose(0) << d.print();
 	}
 }
 
@@ -185,7 +202,7 @@ void read_name(string cmd)
 {
 	vector<string> cmds = split(cmd);
 	string address_regex = cmds[cmds.size() - 1];
-	cout << "reading address: " << address_regex << " from " << devices.size() << " devices" << endl;
+	print::output.verbose(1) << "reading address: " << address_regex << " from " << devices.size() << " devices" << endl;
 	Dataset addresses = dataset->subset("name", address_regex);
 
 	if (addresses.size() == 0)
@@ -195,16 +212,14 @@ void read_name(string cmd)
 
 	for (Address &adr : addresses.data())
 	{
-		if (config::debug)
-		{
-			cout << "[DEBUG] | ";
-			adr.print();
-		}
+		print::output.verbose(0) << adr << endl;
+		print::debug << "[DEBUG] | " << adr.print();
+
 		for (Device &dev : devices)
 		{
 			Data buff(0x0);
 			dev.read(&buff, adr);
-			cout << dev << ": " << buff << endl;
+			print::output.verbose(0) << "    " << dev << ": " << buff << endl;
 		}
 	}
 }
@@ -215,8 +230,8 @@ void write_name(string cmd)
 	string address_regex = cmds[cmds.size() - 2];
 	Data data(cmds[cmds.size() - 1]);
 
-	cout << "writing data:       " << data << endl;
-	cout << "to address pattern: " << address_regex << endl;
+	print::output.verbose(1) << "writing data:       " << data << endl;
+	print::output.verbose(1) << "to address pattern: " << address_regex << endl;
 
 	Dataset addresses = dataset->subset("name", address_regex);
 
@@ -228,16 +243,20 @@ void write_name(string cmd)
 	// cout << "[Device] -> [Address]: [Value] " << adr.get("name") << endl;
 	for (Address adr : addresses.data())
 	{
-		if (config::debug)
-		{
-			cout << "[DEBUG] | ";
-			adr.print();
-		}
+		print::debug << "[DEBUG] | " << adr.print();
+
 		for (Device dev : devices)
 		{
 			dev.write(&data, adr);
 		}
 	}
+}
+
+void set_dataset(string cmd)
+{
+	vector<string> cmds = split(cmd);
+	string path = cmds[cmds.size() - 1];
+	dataset = new Dataset(path);
 }
 
 void address_info(string cmd)
@@ -257,7 +276,8 @@ void address_info(string cmd)
 		regex = cmds[cmds.size() - 1];
 	}
 
-	cout << "reading address " << param << " info for " << regex << endl;
+	print::output.verbose(1) << "reading address " << param << " info for " << regex << endl;
+
 	Dataset addresses = dataset->subset(param, regex);
 
 	if (addresses.size() == 0)
@@ -265,14 +285,22 @@ void address_info(string cmd)
 		cout << "[WARNING] - Unable to find any addresses that match \"" << regex << "\"" << endl;
 	}
 
-	addresses.print(-1);
+	print::output.verbose(0) << addresses.print(-1);
 }
 
 void toggle_debug(string cmd)
 {
 	vector<string> cmds = split(cmd);
 	config::debug = stoi(cmds[cmds.size() - 1]);
- 	cout << "Debug set: " << (config::debug ? "TRUE" : "FALSE") << endl;
+	print::output.verbose(1) << "Debug set: " << (config::debug ? "TRUE" : "FALSE") << endl;
+}
+
+void set_verbose(string cmd)
+{
+	vector<string> cmds = split(cmd);
+	int verbose = stoi(cmds[cmds.size() - 1]);
+	config::verbose = verbose ? verbose > 0 : 0;
+	print::output.verbose(1) << "Verbose set: " << config::verbose << endl;
 }
 
 void set_print(string cmd)
@@ -282,35 +310,39 @@ void set_print(string cmd)
 	if (print == "dec")
 	{
 		Data::format = F_DEC;
-		cout << "printing values in decimal" << endl;
+		print::output.verbose(1) << "printing values in decimal" << endl;
 	}
 	else if (print == "hex")
 	{
 		Data::format = F_HEX;
-		cout << "printing values in hex." << endl;
+		print::output.verbose(1) << "printing values in hex." << endl;
 	}
 	else if (print == "bin")
 	{
 		Data::format = F_BIN;
-		cout << "printing values in 64bit binary." << endl;
+		print::output.verbose(1) << "printing values in 64bit binary." << endl;
 	}
 }
 
 void terminate(string cmd)
 {
-	printf("Exiting...\n");
+	print::output.verbose(0) << "exiting..." << endl;
 	exit(0);
 }
 
-void loadcmds(std::string fname, linenoise& ln)
+void runcmds(std::string fname, linenoise& ln)
 {
 	std::ifstream file(fname);
 	if (!file.is_open())
 		throw std::runtime_error("Could not open file: " + fname);
 
 	std::string line;
+	std::string comment = "#";
 	while (std::getline(file, line))
 	{
+		if (line.find(comment) == 0)
+			continue;
+
 		string hint = ln.menu_tree.find_hints(line);
 		int ei = ln.get_enter_index();
 		
@@ -325,8 +357,6 @@ void loadcmds(std::string fname, linenoise& ln)
 
 int main(int argc, char **argv) 
 {
-	dataset = new Dataset(dataset_path);
-
 	char* buf;
 	string line;
 
@@ -337,7 +367,12 @@ int main(int argc, char **argv)
 
 	if (argc > 1) 
 	{
-		loadcmds(argv[1], ln);
+		runcmds(argv[1], ln);
+	}
+
+	if (dataset == NULL)
+	{
+		dataset = new Dataset(dataset_path);
 	}
 
 	/* Now this is the main loop of the typical linenoise-based application.

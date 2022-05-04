@@ -22,8 +22,11 @@ int m = vec.size();
 void loadtxt(string fname, vector<Address> &out)
 {
     ifstream file(fname);
-    if (!file.is_open())
-        throw runtime_error("Could not open file: " + fname);
+    if (!file.is_open()) 
+    {
+        cerr << "[ERROR] - Could not open file: " << fname << endl;
+        return;
+    }
 
     string line, word;
     string comma_delim = ",";
@@ -64,8 +67,15 @@ Address::Address(vector<string> input)
     }
 }
 
-void Address::print(vector<int> spacers)
+std::ostream &operator<<(std::ostream &os, const Address &adr)
 {
+    os << adr.get("name");
+    return os;
+}
+
+string Address::print(vector<int> spacers)
+{
+    stringstream ss;
     for (unsigned int i = 0; i < HEADER.size(); i++)
     {
         string value = get(HEADER[i]);
@@ -80,10 +90,11 @@ void Address::print(vector<int> spacers)
         }
 
         string spaces(n_spaces - value.size(), ' ');
-        cout << value << spaces << " | ";
+        ss << value << spaces << " | ";
         // cout << (string)value << endl;
     }
-    cout << endl;
+    ss << endl;
+    return ss.str();
 }
 
 Dataset::Dataset(string fname)
@@ -95,9 +106,10 @@ Dataset::Dataset(string fname)
 
 }
 
-void Dataset::print(int n_adrs)
+string Dataset::print(int n_adrs)
 {
-    cout << "Size: " << size() << endl;
+    stringstream ss;
+    ss << "N Addresses: " << size() << endl;
     vector<int> spacers;
     if ( n_adrs > size() || n_adrs == -1)
         n_adrs = size();
@@ -122,18 +134,18 @@ void Dataset::print(int n_adrs)
     for (unsigned int i = 0; i < HEADER.size(); i++)
     {
         string spaces(spacers[i] - HEADER[i].size(), ' ');
-        cout  << HEADER[i] << spaces << " | ";
+        ss  << HEADER[i] << spaces << " | ";
     }
-    cout << endl;
+    ss << endl;
 
     string line(n_char, '-');
-    cout << line << endl;
+    ss << line << endl;
 
     for (unsigned int i = 0; i < n_adrs; i++)
     {
-        addresses[i].print(spacers);
+        ss << addresses[i].print(spacers);
     }
-
+    return ss.str();
 }
 
 string matching_param(string param)

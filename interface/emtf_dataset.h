@@ -16,8 +16,8 @@ class Address
 public:
 
     Address(std::vector<std::string> input);
-    std::string get(std::string param) { return data[param];  }
-    uint64_t get_as_hex(std::string param) 
+    std::string get(std::string param) const { return data.at(param);  }
+    uint64_t get_as_hex(std::string param) const
     {
         std::string value = get(param);
         try {
@@ -27,7 +27,7 @@ public:
             return 0x0;
         }
     }
-    void print(std::vector<int> spacers={});
+    std::string print(std::vector<int> spacers={});
 
 private:
     std::map<std::string, std::string> data;
@@ -43,11 +43,13 @@ public:
     Dataset subset(std::string param, std::string pattern);
 
     unsigned int size() { return addresses.size(); }
-    void print(int n_adrs=5);
+    std::string print(int n_adrs=5);
     std::vector<Address> data() { return addresses; }
 
 private:
     std::vector<Address> addresses;
 };
+
+std::ostream &operator<<(std::ostream &os, const Address &adr);
 
 #endif // EMTF_DATASET_H

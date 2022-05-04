@@ -1,2 +1,4 @@
-open utca_sp120
+dataset /home/koenig/Documents/linenoise_cpp/data/emtf_pcie_address_table.csv
+open /dev/utca_sp120
 list
+exit

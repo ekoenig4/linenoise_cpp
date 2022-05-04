@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "config.h"
+#include "terminal_output.h"
 using namespace std;
 
 std::ostream &operator<<(std::ostream &os, const Device &d)
@@ -28,10 +29,7 @@ Device::Device(string path)
 
 ssize_t Device::read(void *buf, size_t count, off_t offset)
 {
-    if (config::debug)
-    {
-        cout << "[DEBUG] - reading " << count << " bytes from " << hex << offset << endl;
-    }
+    print::debug << "[DEBUG] - reading " << count << " bytes from " << hex << offset << endl;
 
     int ret = pread(id, buf, count, offset);
 
@@ -62,18 +60,15 @@ ssize_t Device::read(void *buf, Address adr)
     uint64_t block = *static_cast<uint64_t *>(buf);
     uint64_t data = (block & mask) >> pos;
 
-    if (config::debug)
-    {
-        cout << "[DEBUG] - reading" << endl;
-        cout << "          "
-             << "address: " << hex << offset << endl;
-        cout << "          "
-             << "mask:    " << bitset<64>(mask) << endl;
-        cout << "          "
-             << "block:   " << bitset<64>(block) << endl;
-        cout << "          "
-             << "data:    " << bitset<64>(data) << endl;
-    }
+    print::debug << "[DEBUG] - reading" << endl
+                     << "          "
+                     << "address: " << hex << offset << endl
+                     << "          "
+                     << "mask:    " << bitset<64>(mask) << endl
+                     << "          "
+                     << "block:   " << bitset<64>(block) << endl
+                     << "          "
+                     << "data:    " << bitset<64>(data) << endl;
 
     // Write offset word back to buffer
     memcpy(buf, &data, sizeof(data));
@@ -83,10 +78,7 @@ ssize_t Device::read(void *buf, Address adr)
 
 ssize_t Device::write(const void *buf, size_t count, off_t offset)
 {
-    if (config::debug)
-    {
-        cout << "[DEBUG] - writing " << count << " bytes to   " << hex << offset << endl;
-    }
+    print::debug << "[DEBUG] - writing " << count << " bytes to   " << hex << offset << endl;
 
     int ret = pwrite(id, buf, count, offset);
 
@@ -121,19 +113,15 @@ ssize_t Device::write(const void *buf, Address adr)
     memcpy(&data, buf, sizeof(buf));
     data = data << pos;
 
-
-    if (config::debug)
-    {
-        cout << "[DEBUG] - writing" << endl;
-        cout << "          "
-             << "address: " << hex << offset << endl;
-        cout << "          "
-             << "mask:    " << bitset<64>(mask) << endl;
-        cout << "          "
-             << "block:   " << bitset<64>(block) << endl;
-        cout << "          "
-             << "data:    " << bitset<64>(data) << endl;
-    }
+    print::debug << "[DEBUG] - writing" << endl
+                 << "          "
+                 << "address: " << hex << offset << endl
+                 << "          "
+                 << "mask:    " << bitset<64>(mask) << endl
+                 << "          "
+                 << "block:   " << bitset<64>(block) << endl
+                 << "          "
+                 << "data:    " << bitset<64>(data) << endl;
 
     // Zero out the word position
     block = block & ~mask;
@@ -146,11 +134,13 @@ ssize_t Device::write(const void *buf, Address adr)
     {
         block = 0x0;
         read(&block, 8, offset);
-        cout << "[DEBUG] - block:   " << bitset<64>(block) << endl;
+        print::debug << "[DEBUG] - block:   " << bitset<64>(block) << endl;
     }
 }
 
-void Device::print()
+string Device::print()
 {
-    cout << "device: " << name << endl;
+    stringstream ss;
+    ss << "device: " << name << endl;
+    return ss.str();
 }

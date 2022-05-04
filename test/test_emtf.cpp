@@ -14,10 +14,10 @@ int main()
     cout << "--- Dataset Size: " << dataset.size() << endl;
 
     cout << "Printing Dataset" << endl;
-    dataset.print();
+    cout << dataset.print();
 
     cout << "Filter only ME1" << endl;
     Dataset subset = dataset.subset("chamber", "ME1.*");
 
-    subset.print();
+    cout << subset.print();
 }
