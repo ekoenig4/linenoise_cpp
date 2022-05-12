@@ -23,7 +23,7 @@ Device::Device(string path)
 
     if (id == -1)
     {
-        cout << "[WARNING] - Unable to open device: " << path << endl;
+        print::warning << "[WARNING] - Unable to open device: " << path << endl;
     }
 }
 

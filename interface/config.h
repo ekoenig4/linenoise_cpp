@@ -5,6 +5,7 @@ namespace config
 {
     extern bool debug;
     extern int verbose;
+    extern bool warning;
 }
 
 #endif // CONFIG_H

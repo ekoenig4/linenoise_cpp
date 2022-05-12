@@ -68,6 +68,12 @@ namespace print
         bool show() { return config::debug; }
     };
     extern Debug debug;
+
+    struct Warning : Logger
+    {
+        bool show() { return config::warning; }
+    };
+    extern Warning warning;
 };
 
 #endif // TERMINAL_OUTPUT_H

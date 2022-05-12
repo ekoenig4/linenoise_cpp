@@ -73,6 +73,9 @@ void set_print(string cmd);
 string debug_help = "Set debug options";
 void toggle_debug(string cmd);
 
+string warning_help = "Toggle warnings on and off";
+void toggle_warning(string cmd);
+
 string verbose_help = "Set verbose level. 0 - no output, 1 - standard output";
 void set_verbose(string cmd);
 
@@ -120,6 +123,9 @@ node_record nr[] =
 
 		{0, "debug", "0/1", NULL, &debug_help},
 			{1, "([0-1])", "<Enter>", toggle_debug, &debug_help},
+
+		{0, "warning", "0/1", NULL, &warning_help},
+			{1, "([0-1])", "<Enter>", toggle_warning, &warning_help},
 
 		{0, "verbose", "level (0,1)", NULL, &verbose_help},
 			{1, "([0-1])", "<Enter>", set_verbose, &verbose_help},
@@ -207,7 +213,7 @@ void read_name(string cmd)
 
 	if (addresses.size() == 0)
 	{
-		cout << "[WARNING] - Unable to find any addresses that match \"" << address_regex << "\"" << endl;
+		print::warning << "[WARNING] - Unable to find any addresses that match \"" << address_regex << "\"" << endl;
 	}
 
 	for (Address &adr : addresses.data())
@@ -237,7 +243,7 @@ void write_name(string cmd)
 
 	if (addresses.size() == 0)
 	{
-		cout << "[WARNING] - Unable to find any addresses that match \"" << address_regex << "\"" << endl;
+		print::warning << "[WARNING] - Unable to find any addresses that match \"" << address_regex << "\"" << endl;
 	}
 
 	// cout << "[Device] -> [Address]: [Value] " << adr.get("name") << endl;
@@ -256,6 +262,7 @@ void set_dataset(string cmd)
 {
 	vector<string> cmds = split(cmd);
 	string path = cmds[cmds.size() - 1];
+	print::output.verbose(1) << "Loading dataset: " << path << endl;
 	dataset = new Dataset(path);
 }
 
@@ -282,7 +289,7 @@ void address_info(string cmd)
 
 	if (addresses.size() == 0)
 	{
-		cout << "[WARNING] - Unable to find any addresses that match \"" << regex << "\"" << endl;
+		print::warning << "[WARNING] - Unable to find any addresses that match \"" << regex << "\"" << endl;
 	}
 
 	print::output.verbose(0) << addresses.print(-1);
@@ -293,6 +300,13 @@ void toggle_debug(string cmd)
 	vector<string> cmds = split(cmd);
 	config::debug = stoi(cmds[cmds.size() - 1]);
 	print::output.verbose(1) << "Debug set: " << (config::debug ? "TRUE" : "FALSE") << endl;
+}
+
+void toggle_warning(string cmd)
+{
+	vector<string> cmds = split(cmd);
+	config::warning = stoi(cmds[cmds.size() - 1]);
+	print::output.verbose(1) << "Warning set: " << (config::warning ? "TRUE" : "FALSE") << endl;
 }
 
 void set_verbose(string cmd)

@@ -1,4 +1,10 @@
 dataset /home/koenig/Documents/linenoise_cpp/data/emtf_pcie_address_table.csv
-open /dev/utca_sp120
+warning 0
+verbose 0
+open /dev/utca.*
 list
+write endcap 0
+read endcap
+write endcap 1
+read endcap
 exit
