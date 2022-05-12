@@ -1,6 +1,5 @@
 dataset /home/koenig/Documents/linenoise_cpp/data/emtf_pcie_address_table.csv
 warning 0
-verbose 0
 open /dev/utca.*
 list
 write endcap 0

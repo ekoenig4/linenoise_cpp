@@ -18,6 +18,8 @@
 
 using namespace boost;
 
+linenoise *ln;
+
 string dataset_path = "/home/koenig/Documents/linenoise_cpp/data/emtf_pcie_address_table.csv";
 Dataset *dataset;
 vector<Device> devices;
@@ -25,7 +27,7 @@ vector<Device> devices;
 //FILE* log_file;
 // help strings
 string top_help = 
-"Available commands:\n open\n read\n write\n list\n dataset\n info\n print\n verbose\n debug\n exit\n"
+"Available commands:\n open\n read\n write\n list\n dataset\n info\n print\n verbose\n debug\n warning\n exit\n"
 "Type help [command] to see more infomation about a command\n"
 "Type help instructions to learn how to use command line\n"
 "A file of commands can be passed to the terminal on startup: ./emtf-term /path/to/cmds.txt\n"
@@ -67,10 +69,15 @@ string dataset_help = "Specify path to dataset csv.\n"
 					  dataset_path;
 void set_dataset(string cmd);
 
+string script_help = "Run a list of commands contained in a text file.\n"
+					 "Commands can be commented out using # at the beginning of the line.\n"
+					 "Additional script commands within the text file will be ignored.";
+void script(string cmd);
+
 string print_help = "Set the format for values to printed as. Either decimal (dec, default), hex (hex), or 64bit binary (bin).";
 void set_print(string cmd);
 
-string debug_help = "Set debug options";
+string debug_help = "Toggle debug on and off";
 void toggle_debug(string cmd);
 
 string warning_help = "Toggle warnings on and off";
@@ -121,14 +128,17 @@ node_record nr[] =
 			{1, "(.*)", "<Enter>", address_info, &missing_adr_name},
 				{2, "(.*)", "<Enter>", address_info, &missing_adr_name},
 
+		{0, "script", "/path/to/cmds.txt", NULL, &script_help},
+			{1, "(.*)", "<Enter>", script, &script_help},
+
+		{0, "verbose", "level (0,1)", NULL, &verbose_help},
+			{1, "([0-1])", "<Enter>", set_verbose, &verbose_help},
+
 		{0, "debug", "0/1", NULL, &debug_help},
 			{1, "([0-1])", "<Enter>", toggle_debug, &debug_help},
 
 		{0, "warning", "0/1", NULL, &warning_help},
 			{1, "([0-1])", "<Enter>", toggle_warning, &warning_help},
-
-		{0, "verbose", "level (0,1)", NULL, &verbose_help},
-			{1, "([0-1])", "<Enter>", set_verbose, &verbose_help},
 
 		{0, "print", "(dec|hex|bin)", set_print, &print_help},
 
@@ -140,8 +150,8 @@ vector<string> split(string s, string delimiter=" ")
 {
 	vector<string> words;
 	size_t pos = 0;
-	std::string token;
-	while ((pos = s.find(delimiter)) != std::string::npos) {
+	string token;
+	while ((pos = s.find(delimiter)) != string::npos) {
 		token = s.substr(0, pos);
 		words.push_back(token);
 		s.erase(0, pos + delimiter.length());
@@ -338,35 +348,49 @@ void set_print(string cmd)
 	}
 }
 
+void script(string cmd)
+{
+	vector<string> cmds = split(cmd);
+	string fname = cmds[cmds.size() - 1];
+
+	ifstream file(fname);
+	if (!file.is_open())
+    {
+        cerr << "[ERROR] - Could not open file: " << fname << endl;
+        return;
+    }
+
+	string line;
+	string comment = "#";
+	while (getline(file, line))
+	{
+		// Skip comments
+		if (line.find(comment) == 0)
+			continue;
+
+		// Skip script commands to avoid possible infinite recursion
+		if (line.find("script") == 0)
+			continue;
+
+		string hint = ln->menu_tree.find_hints(line);
+		int ei = ln->get_enter_index();
+		
+		// call callback for this command if available
+		if (ei >= 0 && nr[ei].cb != NULL) nr[ei].cb(line);
+
+		// display help message if requested
+		if (ei < 0)	printf("%s", ln->get_help_message().c_str());
+	}
+}	
+
 void terminate(string cmd)
 {
 	print::output.verbose(0) << "exiting..." << endl;
 	exit(0);
 }
 
-void runcmds(std::string fname, linenoise& ln)
-{
-	std::ifstream file(fname);
-	if (!file.is_open())
-		throw std::runtime_error("Could not open file: " + fname);
 
-	std::string line;
-	std::string comment = "#";
-	while (std::getline(file, line))
-	{
-		if (line.find(comment) == 0)
-			continue;
 
-		string hint = ln.menu_tree.find_hints(line);
-		int ei = ln.get_enter_index();
-		
-		// call callback for this command if available
-		if (ei >= 0 && nr[ei].cb != NULL) nr[ei].cb(line);
-
-		// display help message if requested
-		if (ei < 0)	printf("%s", ln.get_help_message().c_str());
-	}
-}	
 
 
 int main(int argc, char **argv) 
@@ -377,11 +401,11 @@ int main(int argc, char **argv)
 	//	log_file = fopen ("linenoise_log.txt", "w");
 
 	// construct linenoise
-	linenoise ln(nr, "history.txt");
+	ln = new linenoise(nr, "history.txt");
 
 	if (argc > 1) 
 	{
-		runcmds(argv[1], ln);
+		script(argv[1]);
 	}
 
 	if (dataset == NULL)
@@ -393,11 +417,11 @@ int main(int argc, char **argv)
      * The call to ln.prompt() will block as long as the user types something
      * and presses enter. */
     
-    while((buf = ln.prompt("emtf-term> ")) != NULL) 
+    while((buf = ln->prompt("emtf-term> ")) != NULL) 
 	{
 		line = (string) buf;
 		// index of the record when user pressed Enter
-		int ei = ln.get_enter_index();
+		int ei = ln->get_enter_index();
 
 //		printf("cmd: '%s' enter index: %d\n", line.c_str(), ei);
 
@@ -405,7 +429,7 @@ int main(int argc, char **argv)
 		if (ei >= 0 && nr[ei].cb != NULL) nr[ei].cb(line);
 
 		// display help message if requested
-		if (ei < 0)	printf("%s", ln.get_help_message().c_str());
+		if (ei < 0)	printf("%s", ln->get_help_message().c_str());
 
 		free (buf);
 	}

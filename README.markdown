@@ -1,3 +1,15 @@
+# Install Instructions
+
+Once the github repo is cloned, the project can be compiled using 
+```
+make emtf-term
+```
+
+This will place the executable in the bin/ folder. A test script is provided that can be run 
+```
+./bin/emtf-term script/test.txt
+```
+
 # Linenoise CPP
 
 The popular Linenoise library reworked for C++, focused on **extreme ease of use**.

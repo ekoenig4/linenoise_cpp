@@ -22,9 +22,11 @@ INCLUDE=-l boost_regex -I $(HDR)
 all: $(EXES) 
 
 $(OBJ)%.obj: $(SRC)%.cpp $(HDR)%.h 
+	@mkdir -p $(@D)
 	$(CC) $(ARGS) -c $< -o $@ $(INCLUDE)
 
 $(EXE)%: $(PRG)%.cpp $(OBJS) 
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $< $(OBJS) -o $@ $(INCLUDE)
 
 %: $(EXE)%
