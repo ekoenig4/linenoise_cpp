@@ -20,7 +20,7 @@ using namespace boost;
 
 linenoise *ln;
 
-string dataset_path = "/home/koenig/Documents/linenoise_cpp/data/emtf_pcie_address_table.csv";
+string dataset_path = "data/emtf_pcie_address_table.csv";
 Dataset *dataset;
 vector<Device> devices;
 
